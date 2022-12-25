@@ -4,8 +4,6 @@
 import os
 import sys
 import ftplib
-import traceback
-
 
 class FtpDownloader(object):
     PATH_TYPE_UNKNOWN = -1
@@ -41,6 +39,8 @@ class FtpDownloader(object):
             rdir - remote direcotry path of the FTP Server.
             init - flag showing whether in a recursion.
         '''
+        print('rdir: %s, init: %s' % (rdir, init))
+
         if init and rdir in ('.', None):
             rdir = self.conn.pwd()
         tree = []
@@ -100,16 +100,23 @@ class FtpDownloader(object):
                 downloading one file, such as a function that writes a log.
                 By default, the error is print to the stdout.
         '''
+        if verbose:
+            print('Host %s directory %s download started:' % (
+                self.conn.host, rdir
+            ))
+
         if not tree:
             tree = self.tree(rdir=rdir, init=True)
+
         numDir, numFile, numUnknown = self.treeStat(tree)
+
         if verbose:
-            print 'Host %s tree statistic:' % self.conn.host
-            print '%d directories, %d files, %d unknown type' % (
+            print('Host %s tree statistic:' % self.conn.host)
+            print('%d directories, %d files, %d unknown type' % (
                 numDir,
                 numFile,
                 numUnknown
-            )
+            ))
 
         if not os.path.exists(ldir):
             os.makedirs(ldir)
@@ -131,75 +138,51 @@ class FtpDownloader(object):
                     if errHandleFunc:
                         errHandleFunc(err, rpath, lpath)
                     elif verbose:
-                        print 'An Error occurred when downloading '\
-                              'remote file %s' % rpath
-                        traceback.print_exc()
+                        print('An Error occurred when downloading '\
+                              'remote file %s' % rpath)
                         print
                 if verbose:
-                    print 'Host %s: %d/%d/%d(ok/err/total) files downloaded' % (
+                    print('Host %s: %d/%d/%d(ok/err/total) files downloaded' % (
                         self.conn.host,
                         numDownOk,
                         numDownErr,
-                        numFile
+                        numFile)
                     )
             elif pathType == self.PATH_TYPE_UNKNOWN:
                 if verbose:
-                    print 'Unknown type romote path got: %s' % rpath
+                    print('Unknown type romote path got: %s' % rpath)
 
         if verbose:
-            print 'Host %s directory %s download finished:' % (
+            print('Host %s directory %s download finished:' % (
                 self.conn.host, rdir
-            )
-            print '%d directories, %d(%d failed) files, %d unknown type.' % (
+            ))
+            print('%d directories, %d(%d failed) files, %d unknown type.' % (
                 numDir,
                 numFile,
                 numDownErr,
                 numUnknown
-            )
+            ))
         return numDir, numFile, numUnknown, numDownErr
 
 
 if __name__ == '__main__':
-    import sys
-    import traceback
-    from pprint import pprint as pr
 
-    flog = open('err.log', 'wb')
+    try:
+        fd = FtpDownloader(
+            host="",
+            user='',
+            passwd='',
+            port=21,
+            timeout=10
+        )
+        numDir, numFile, numUnknown, numDownErr = fd.downloadDir(
+            rdir='',
+            ldir='download',
+            tree=None,
+            errHandleFunc=None,
+            verbose=True
+        )
 
-    def run(host):
-        try:
-            fd = FtpDownloader(
-                host=host,
-                user='test',
-                passwd='test',
-                port=21,
-                timeout=10
-            )
-            numDir, numFile, numUnknown, numDownErr = fd.downloadDir(
-                rdir='.',
-                ldir='download',
-                tree=None,
-                errHandleFunc=None,
-                verbose=True
-            )
-            flog.write(
-                '%s\nok\n'
-                '%d directories, %d(%d failed) files, %d unknown type\n\n\n' % (
-                    host,
-                    numDir,
-                    numFile,
-                    numDownErr,
-                    numUnknown
-                )
-            )
-        except Exception as err:
-            traceback.print_exc()
-            flog.write(
-                '%s\nerror\n%s\n\n\n' % (
-                    host,
-                    traceback.format_exc()
-                )
-            )
-
-    pr(run(sys.argv[1]))
-    flog.close()
+    except Exception as err:
+        print('An Error occurred: %s' % err)
+        sys.exit(1)
